@@ -36,76 +36,14 @@ public:
     double L2Regularization();
     void Dropout(Matrix& matrix);
     double Validate();
-    void Train(int numEpochs, double learningRate, std::string fileName);
+    void TrainOne(int numEpochs, double learningRate, std::string fileName);
+    void Train(double learningRate, std::string fileName, std::string fileTestData, std::string fileVerificationData);
 
     void setInput(const std::vector<double>& input);
     void setOutput(const std::vector<double>& output);
     void setValidationInput(const std::vector<double>& validationInput);
     void setValidationOutput(const std::vector<double>& validationOutput);
     std::vector<double> getOutput() const;
-
-private:
-    std::vector<int> topology;
-    std::vector<Matrix> values;
-    std::vector<Matrix> weights;
-    std::vector<Matrix> prevWeights;
-    std::vector<Matrix> biass;
-    std::vector<Matrix> errors;
-    std::vector<double> input;
-    std::vector<double> output;
-    std::vector<double> validationInput;
-    std::vector<double> validationOutput;
-    double dropoutProb;
-    double lambda;
-
-    // Read network from file
-    void readNetworkFromFile(const std::string& filename)
-    {
-        std::ifstream file(filename);
-        if (!file) {
-            throw std::runtime_error("Failed to open file: " + filename);
-        }
-
-        std::string line;
-        std::getline(file, line); // Read the comment
-
-        // Read topology
-        int topologySize = 0;
-        file >> topologySize;
-        file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-        std::vector<int> topology(topologySize);
-        for (int i = 0; i < topologySize; ++i) {
-            file >> topology[i];
-        }
-
-        std::getline(file, line); // Read the empty line before each values section
-        
-        // Read values
-        for (int i = 0; i < topologySize; ++i) {
-            std::getline(file, line); // Read the empty line before each values section
-            std::getline(file, line); // Read the empty line before each values section
-            values[i].readFromFile(file);
-            std::getline(file, line); // Read the empty line before each values section
-        }
-
-        // Read weights
-        for (int i = 0; i < topologySize - 1; ++i) {
-            std::getline(file, line); // Read the empty line before each weights section
-            std::getline(file, line); // Read the empty line before each values section
-            weights[i].readFromFile(file);
-            std::getline(file, line); // Read the empty line before each values section
-        }
-
-        // Read biases
-        for (int i = 0; i < topologySize - 1; ++i) {
-            std::getline(file, line); // Read the empty line before each values section
-            std::getline(file, line); // Read the empty line before each biases section
-            biass[i].readFromFile(file);
-            std::getline(file, line); // Read the empty line before each values section
-        }
-        file.close();
-    }
 
     // Write network to file
     void writeToFile(const std::string& filename) const
@@ -141,9 +79,99 @@ private:
         // Write biases
         for (int i = 0; i < topologySize - 1; ++i) {
             file << std::endl << "# Biases Layer " << i + 1 << std::endl;
-            biass[i].writeToFile(file); // Pass the file stream to the Matrix's writeToFile function
+            biases[i].writeToFile(file); // Pass the file stream to the Matrix's writeToFile function
         }
 
+        file.close();
+    }
+
+private:
+    std::vector<int> topology;
+    std::vector<Matrix> values;
+    std::vector<Matrix> weights;
+    std::vector<Matrix> prevWeights;
+    std::vector<Matrix> biases;
+    std::vector<Matrix> errors;
+    std::vector<double> input;
+    std::vector<double> output;
+    std::vector<double> validationInput;
+    std::vector<double> validationOutput;
+    double dropoutProb;
+    double lambda;
+
+    // Read network from file
+    void readNetworkFromFile(const std::string& filename)
+    {
+
+        std::ifstream file(filename);
+        if (!file) {
+            throw std::runtime_error("Failed to open file: " + filename);
+        }
+
+        std::string line;
+        std::getline(file, line); // Read the comment
+
+
+        // Read topology
+        int topologySize = 0;
+        file >> topologySize;
+        file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+        std::vector<int> topology(topologySize);
+        for (int i = 0; i < topologySize; ++i) {
+            file >> topology[i];
+        }
+
+        for (int i = 0; i < topology.size() - 1; i++)
+        {
+            Matrix val(1, topology.at(i));
+            Matrix weight(topology.at(i), topology.at(i + 1));
+
+            for (int h = 0; h < topology.at(i); h++) // randomly sets weights
+            {
+                for (int j = 0; j < topology.at(i + 1); j++)
+                {
+                    weight.setData(h, j, randomNum());
+                }
+            }
+            Matrix bias(1, topology.at(i + 1));
+            Matrix error(1, topology.at(i + 1));
+
+            values.push_back(val);
+            weights.push_back(weight);
+            prevWeights.push_back(weight);
+            biases.push_back(bias);
+            errors.push_back(error);
+        }
+        Matrix val(1, topology.back());
+
+        values.push_back(val);
+
+        std::getline(file, line); // Read the empty line before each values section
+
+        // Read values
+        for (int i = 0; i < topologySize; ++i) {
+            std::getline(file, line); // Read the empty line before each values section
+            std::getline(file, line); // Read the empty line before each values section
+            values[i].readFromFile(file);
+            std::getline(file, line); // Read the empty line before each values section
+        }
+
+        // Read weights
+        for (int i = 0; i < topologySize - 1; ++i) {
+            std::getline(file, line); // Read the empty line before each weights section
+            std::getline(file, line); // Read the empty line before each values section
+            weights[i].readFromFile(file);
+            std::getline(file, line); // Read the empty line before each values section
+        }
+
+        // Read biases
+        for (int i = 0; i < topologySize - 1; ++i) {
+            std::getline(file, line); // Read the empty line before each values section
+            std::getline(file, line); // Read the empty line before each biases section
+            biases[i].readFromFile(file);
+            std::getline(file, line); // Read the empty line before each values section
+        }
         file.close();
     }
 
@@ -158,7 +186,7 @@ private:
             std::cout << topology[i] << " ";
         }
         std::cout << std::endl;
-        
+
         // Write values
         for (int i = 0; i < topologySize; ++i) {
             std::cout << std::endl << "# Values Layer " << i << std::endl;
@@ -174,7 +202,7 @@ private:
         // Write biases
         for (int i = 0; i < topologySize - 1; ++i) {
             std::cout << std::endl << "# Biases Layer " << i + 1 << std::endl;
-            biass[i].display();
+            biases[i].display();
         }
     }
 };
@@ -182,56 +210,57 @@ private:
 NetWork::NetWork(std::vector<int> top, std::string fileName, bool file, double dropout, double regularization)
     : topology(top), dropoutProb(dropout), lambda(regularization)
 {
-    for (int i = 0; i < topology.size() - 1; i++)
-    {
-        Matrix val(1, topology.at(i));
-        Matrix weight(topology.at(i), topology.at(i + 1));
-
-        for (int h = 0; h < topology.at(i); h++) // randomly sets weights
-        {
-            for (int j = 0; j < topology.at(i + 1); j++)
-            {
-                weight.setData(h, j, randomNum());
-            }
-        }
-        Matrix bias(1, topology.at(i + 1));
-        Matrix error(1, topology.at(i + 1));
-
-        values.push_back(val);
-        weights.push_back(weight);
-        prevWeights.push_back(weight);
-        biass.push_back(bias);
-        errors.push_back(error);
-    }
-    Matrix val(1, topology.back());
-
-    values.push_back(val);
-
     if (file == true)
     {
         readNetworkFromFile(fileName);
     }
-   
-}
+    else
+    {
+        for (int i = 0; i < topology.size() - 1; i++)
+        {
+            Matrix val(1, topology.at(i));
+            Matrix weight(topology.at(i), topology.at(i + 1));
 
-void NetWork::setInput(const std::vector<double>& input) 
-{
-    for (size_t i = 0; i < input.size(); ++i) {
-        values.front().setData(0, i, input[i]);
+            for (int h = 0; h < topology.at(i); h++) // randomly sets weights
+            {
+                for (int j = 0; j < topology.at(i + 1); j++)
+                {
+                    weight.setData(h, j, randomNum());
+                }
+            }
+            Matrix bias(1, topology.at(i + 1));
+            Matrix error(1, topology.at(i + 1));
+
+            values.push_back(val);
+            weights.push_back(weight);
+            prevWeights.push_back(weight);
+            biases.push_back(bias);
+            errors.push_back(error);
+        }
+        Matrix val(1, topology.back());
+
+        values.push_back(val);
     }
 }
 
-void NetWork::setOutput(const std::vector<double>& out) 
+void NetWork::setInput(const std::vector<double>& input)
+{
+    for (size_t i = 0; i < input.size(); ++i) {
+        values.at(0).setData(0, i, input[i]);
+    }
+}
+
+void NetWork::setOutput(const std::vector<double>& out)
 {
     this->output = out;
 }
 
-void NetWork::setValidationInput(const std::vector<double>& va) 
+void NetWork::setValidationInput(const std::vector<double>& va)
 {
     validationInput = va;
 }
 
-void NetWork::setValidationOutput(const std::vector<double>& va) 
+void NetWork::setValidationOutput(const std::vector<double>& va)
 {
     validationOutput = va;
 }
@@ -252,7 +281,7 @@ void NetWork::FeedForward()
 {
     for (int i = 0; i < topology.size() - 1; i++)
     {
-        values.at(i + 1) = values.at(i) * weights.at(i) + biass.at(i);
+        values.at(i + 1) = values.at(i) * weights.at(i) + biases.at(i);
 
         values.at(i).sigmoidTransformation();
 
@@ -288,7 +317,7 @@ void NetWork::BackPropagateWithRegularization()
     {
         Matrix transposedWeights = weights[i].transpose();
 
-        Matrix temp = errors[i+1];
+        Matrix temp = errors[i + 1];
 
         errors[i] = temp * weights[i]; //origionally was transposed
     }
@@ -302,7 +331,7 @@ void NetWork::BackPropagateWithRegularization()
 
         // Update biases
         Matrix deltaBiases = errors[i];
-        biass[i] = biass[i] + deltaBiases;
+        biases[i] = biases[i] + deltaBiases;
     }
 }
 
@@ -355,7 +384,7 @@ double NetWork::Validate()
     return error;
 }
 
-void NetWork::Train(int numEpochs, double learningRate, std::string fileName)
+void NetWork::TrainOne(int numEpochs, double learningRate, std::string fileName)
 {
     double bestValidationError = std::numeric_limits<double>::max();
     int bestEpoch = 0;
@@ -372,13 +401,13 @@ void NetWork::Train(int numEpochs, double learningRate, std::string fileName)
         for (int i = 0; i < topology.size() - 1; i++)
         {
             Matrix deltaWeights = values[i].transpose() * errors[i];
-            
+
             weights[i] = weights[i] + deltaWeights * learningRate;
-           
+
             // Update biases
             Matrix deltaBiases = errors[i];
-           
-            biass[i] = biass[i] + deltaBiases * learningRate;
+
+            biases[i] = biases[i] + deltaBiases * learningRate;
         }
 
         // Perform validation
@@ -398,4 +427,115 @@ void NetWork::Train(int numEpochs, double learningRate, std::string fileName)
     }
 
     writeToFile(fileName);
+}
+
+void NetWork::Train(double learningRate, std::string fileName, std::string fileTestData, std::string fileVerificationData)
+{
+    double bestValidationError = std::numeric_limits<double>::max();
+    int bestEpoch = 0;
+
+    std::ifstream inputFile(fileTestData);
+    if (!inputFile)
+    {
+        std::cerr << "Failed to open test data file: " << fileTestData << std::endl;
+        return;
+    }
+
+    int numInputs = topology.front();
+    int numOutputs = topology.back();
+
+    std::vector<std::vector<double>> input(numInputs);
+    std::vector<std::vector<double>> output(numOutputs);
+
+    double data;
+
+    while (inputFile)
+    {
+        for (int i = 0; i < numInputs; i++)
+        {
+            inputFile >> data;
+            input[i].push_back(data);
+        }
+
+        for (int i = 0; i < numOutputs; i++)
+        {
+            inputFile >> data;
+            output[i].push_back(data);
+        }
+    }
+
+    for (int epoch = 0; epoch < input[0].size(); ++epoch)
+    {
+        setInput(input[epoch]);
+        setOutput(output[epoch]);
+
+        // Forward propagation
+        FeedForward();
+
+        // Perform backpropagation with regularization
+        BackPropagateWithRegularization();
+
+        // Update weights and biases
+        for (int i = 0; i < topology.size() - 1; i++)
+        {
+            Matrix deltaWeights = values[i].transpose() * errors[i];
+
+            weights[i] = weights[i] + deltaWeights * learningRate;
+
+            // Update biases
+            Matrix deltaBiases = errors[i];
+
+            biases[i] = biases[i] + deltaBiases * learningRate;
+        }
+    }
+
+    std::ifstream validationInputFile(fileVerificationData);
+    if (!validationInputFile)
+    {
+        std::cerr << "Failed to open validation file: " << fileVerificationData << std::endl;
+        return;
+    }
+
+    std::vector<std::vector<double>> validationInput(numInputs);
+    std::vector<std::vector<double>> validationOutput(numOutputs);
+
+    while (validationInputFile)
+    {
+        for (int i = 0; i < numInputs; i++)
+        {
+            validationInputFile >> data;
+            validationInput[i].push_back(data);
+        }
+
+        for (int i = 0; i < numOutputs; i++)
+        {
+            validationInputFile >> data;
+            validationOutput[i].push_back(data);
+        }
+    }
+
+    for (int epoch = 0; epoch < validationInput[0].size(); ++epoch)
+    {
+        setValidationInput(validationInput[epoch]);
+        setValidationOutput(validationOutput[epoch]);
+
+        // Perform validation
+        double validationError = Validate();
+
+        if (validationError < bestValidationError)
+        {
+            bestValidationError = validationError;
+            bestEpoch = epoch;
+        }
+
+        // Early stopping condition
+        if (epoch - bestEpoch > 10) { // Stop training if no improvement after 10 epochs
+            std::cout << "Early stopping triggered. Best validation error: " << bestValidationError << std::endl;
+            break;
+        }
+    }
+
+    writeToFile(fileName);
+    inputFile.close();
+    validationInputFile.close();
 }
