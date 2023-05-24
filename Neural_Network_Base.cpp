@@ -1,41 +1,80 @@
 // Neural_Network_Base.cpp : This file contains the 'main' function. 
 
-/* https://medium.com/coinmonks/the-mathematics-of-neural-network-60a112dd3e05 */
-
 #include <iostream>
 
 #include "NetWork.h"
 #include <vector>
 
-int main() {
-    // Define the network topology
-    std::vector<int> topology = { 2, 4, 2 }; // Input layer with 2 neurons, hidden layer with 4 neurons, output layer with 2 neurons
-    std::cout << "Set Topology" << std::endl;
+int main() { // doesn't work with inputing from a file
+    int hiddenLayers;
+    int inputs;
+    int outputs;
 
-    // Create the network
-    NetWork network(topology, "File2", true, 0.5, 0.01); // Randomly initialized weights, dropout probability of 0.5, regularization factor of 0.01
-    std::cout << "Network Created..." << std::endl;
+    std::string res;
+    std::string fileName;
 
+    bool file = true;
+    double dropout;
+    double regularization;
 
-    // Set the training data
-    std::vector<double> input = { 0.1, 0.2 };
-    std::vector<double> output = { 0.3, 0.4 };
-    network.setInput(input);
-    network.setOutput(output);
-    std::cout << "Set Training Data" << std::endl;
+    std::vector<int> topology;
 
-    // Set the validation data
-    std::vector<double> validationInput = { 0.3, 0.4 };
-    std::vector<double> validationOutput = { 0.5, 0.6 };
-    network.setValidationInput(validationInput);
-    network.setValidationOutput(validationOutput);
-    std::cout << "Set Validation Data" << std::endl;
+    std::cout << "Load from file? Y or N ";
+    std::cin >> res;
+    std::cout << '\n';
 
-    // Train the network
-    int numEpochs = 100;
-    double learningRate = 0.01;
-    network.Train(numEpochs, learningRate, "File2"); //This is where the code is currently broken
-    std::cout << "...Training..." << std::endl;
+    if (res == "N" || res == "n")
+    {
+        file = false;
+        std::cout << "How many input nodes? ";
+        std::cin >> inputs;
+
+        topology.push_back(inputs);
+        
+        std::cout << '\n' << "How many hidden layers? ";
+        std::cin >> hiddenLayers;
+        for (int i = 0; i < hiddenLayers; i++)
+        {
+            int hid;
+            std::cout << '\n' << "How many nodes in hidden layer? " << i + 1 << "?";
+            std::cin >> hid;
+            topology.push_back(hid);
+        }
+
+        std::cout << '\n' << "How many output nodes? ";
+        std::cin >> outputs;
+        topology.push_back(outputs);
+    }
+    
+    std::cout << '\n' << "What is your dropout value? eg 0.5 ";
+    std::cin >> dropout;
+
+    std::cout << '\n' << "What is your regularization factor? eg 0.01 ";
+    std::cin >> regularization;
+
+    std::cout << '\n' << "What is your file name? ";
+    std::cin >> fileName;
+
+    std::cout << '\n' << "Creating Network... ";
+    NetWork network(topology, fileName, file, dropout, regularization);
+    std::cout << " ...Network Created" << '\n';
+
+    double learningRate;
+    std::string trainingDataFile;
+    std::string verificationDataFile;
+
+    std::cout << "What learning rate would you like? eg 0.01 ";
+    std::cin >> learningRate;
+
+    std::cout << '\n' << "What is the training data file name? ";
+    std::cin >> trainingDataFile;
+
+    std::cout << '\n' << "What is the verification data file name? ";
+    std::cin >> verificationDataFile;
+
+    std::cout << '\n' << "Beginning Training... ";
+    network.Train(learningRate, fileName, trainingDataFile, verificationDataFile);
+    std::cout << "...Training Finished" << '\n';
 
     // Get the output of the trained network
     std::vector<double> networkOutput = network.getOutput();
@@ -47,6 +86,7 @@ int main() {
     }
     std::cout << std::endl;
 
+    network.writeToFile(fileName);
+
     return 0;
 }
-
